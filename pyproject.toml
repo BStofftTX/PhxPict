@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phxpict"
+version = "0.1.0"
+description = "Privacy-first desktop photo indexing and search by MacroStofft"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "LicenseRef-Proprietary"
+authors = [{name = "MacroStofft"}]
+dependencies = ["Pillow>=9.5"]
+
+[project.scripts]
+phxpict = "phxpict.app:main"
+phxpict-cli = "phxpict.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
