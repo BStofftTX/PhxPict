@@ -12,10 +12,16 @@ license = "LicenseRef-Proprietary"
 authors = [{name = "MacroStofft"}]
 dependencies = ["Pillow>=9.5"]
 
+[project.optional-dependencies]
+visual = [
+    "torch>=2.1",
+    "transformers>=4.38,<5",
+]
+test = []
+
 [project.scripts]
 phxpict = "phxpict.app:main"
 phxpict-cli = "phxpict.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
