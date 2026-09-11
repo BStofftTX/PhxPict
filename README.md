@@ -6,7 +6,7 @@ PhxPict indexes a photo repository selected by the user and makes images searcha
 
 - camera capture date (EXIF when available);
 - filesystem modification date;
-- filename, folder, and content tags;
+- filename, folder, and optional local visual-content tags;
 - categories such as people/profiles, nature, buildings, automobiles, trains, planes, and warfare.
 
 The MVP runs locally on Windows, macOS, and Linux. It does not upload photographs, require an account, or depend on a cloud service.
@@ -17,12 +17,12 @@ The MVP runs locally on Windows, macOS, and Linux. It does not upload photograph
 - Recursive photo indexing
 - Persistent SQLite catalog in `~/.phxpict/photos.sqlite3`
 - EXIF and file metadata extraction
-- Searchable content tags
+- Searchable local visual-content tags through an optional CLIP model
 - Capture/modification date range filters
 - Responsive thumbnail gallery
 - Double-click to open an image in the operating system
 - CLI for automation and headless environments
-- Extensible `ContentTagProvider` interface for later local ML integration
+- Extensible `ContentTagProvider` interface with graceful lightweight fallback
 
 ## Quick start
 
@@ -45,9 +45,34 @@ phxpict-cli search "people automobiles"
 
 Each space-separated search term must match the path, filename, or tags.
 
-## Content search today
+## Local visual-content search
 
-The MVP ships with a deterministic filename/folder baseline. For example, `Family/Beach portrait.jpg` receives `people` and `nature` tags. This demonstrates the end-to-end indexing and search architecture without forcing a large ML model download.
+The normal install stays lightweight. In `auto` mode PhxPict uses a local CLIP
+zero-shot image classifier when its optional dependencies are installed, then
+combines pixel-derived tags with deterministic filename/folder tags. If the
+model or dependencies cannot load, indexing continues with filename/folder
+tags instead of failing.
+
+Install local visual search:
+
+```bash
+python -m pip install -e ".[visual]"
+phxpict-cli index /path/to/photos --content-provider clip
+```
+
+The default model is `openai/clip-vit-base-patch32`. On first use, model weights
+may be downloaded and cached by Hugging Face. Image files remain on the
+computer and are passed only to the in-process model; PhxPict contains no image
+upload or cloud-inference code.
+
+Provider modes:
+
+- `auto` (default): visual tags when available, graceful filename fallback;
+- `clip`: require local visual inference and report a clear error if unavailable;
+- `filename`: deterministic path/filename tags only.
+
+The controlled visual vocabulary is: `people`, `nature`, `buildings`,
+`automobiles`, `trains`, `planes`, and `warfare`.
 
 See [Architecture](docs/ARCHITECTURE.md) for the local semantic-model provider path and [Roadmap](docs/ROADMAP.md) for planned features.
 
@@ -67,7 +92,13 @@ docs/              architecture and roadmap
 
 ## Current limitations
 
-- Baseline categories use filename and directory terms, not pixels.
+- Visual search is broad category classification, not object detection, face
+  identity recognition, or proof that a depicted event actually occurred.
+- CLIP confidence is relative to the seven controlled labels and can produce
+  false positives, especially for ambiguous, historical, or composite scenes.
+- Optional CLIP dependencies and model weights are substantially larger than
+  the base install; CPU indexing can be slow on large libraries.
+- The GUI uses `auto` mode but does not yet expose model or threshold settings.
 - HEIC support depends on the Pillow build/platform codec.
 - The UI indexes in a worker thread, but very large libraries still need cancellation and incremental-update controls.
 - Installers and code signing are not included in this MVP.
@@ -76,4 +107,3 @@ docs/              architecture and roadmap
 ## Ownership and licensing
 
 PhxPict is a MacroStofft project. Copyright © 2026 MacroStofft. All rights reserved pending final license selection. See [LICENSE.md](LICENSE.md).
-

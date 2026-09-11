@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 from .cli import default_database
 from .database import Photo, PhotoDatabase
 from .indexer import index_folder
+from .providers import GracefulFallbackTagProvider, build_tag_provider
 
 
 BRAND = "MacroStofft"
@@ -76,9 +77,18 @@ class PhxPictApp(tk.Tk):
     def _index(self, root: Path) -> None:
         worker_database = PhotoDatabase(default_database())
         try:
-            count = index_folder(root, worker_database, progress=lambda n, p: self.after(0, self.status.set, f"Indexed {n}: {p.name}"))
+            provider = build_tag_provider("auto")
+            count = index_folder(
+                root,
+                worker_database,
+                provider=provider,
+                progress=lambda n, p: self.after(0, self.status.set, f"Indexed {n}: {p.name}"),
+            )
             total = worker_database.count()
-            self.after(0, self.status.set, f"Indexed {count} images · {total} total")
+            mode = "local visual + filename tags"
+            if isinstance(provider, GracefulFallbackTagProvider) and provider.fallback_reason:
+                mode = "filename tags (visual model unavailable)"
+            self.after(0, self.status.set, f"Indexed {count} images · {total} total · {mode}")
             self.after(0, self.search)
         except Exception as exc:
             self.after(0, messagebox.showerror, "Indexing failed", str(exc))

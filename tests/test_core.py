@@ -7,7 +7,47 @@ from PIL import Image
 
 from phxpict.database import PhotoDatabase
 from phxpict.indexer import index_folder, iter_images
-from phxpict.providers import FilenameTagProvider
+from phxpict.providers import (
+    FilenameTagProvider,
+    GracefulFallbackTagProvider,
+    LocalCLIPTagProvider,
+    ProviderUnavailableError,
+    VISUAL_CATEGORY_LABELS,
+)
+
+
+class PixelAwareClassifier:
+    """Tiny test double that reads pixels, proving paths reach visual inference."""
+
+    def __init__(self):
+        self.pixel_seen = None
+
+    def __call__(self, image_path, *, candidate_labels, hypothesis_template):
+        with Image.open(image_path) as image:
+            self.pixel_seen = image.convert("RGB").getpixel((0, 0))
+        scores = {label: 0.01 for label in candidate_labels}
+        needle = "an airplane, aircraft, jet, or aviation scene"
+        scores[needle] = 0.92 if self.pixel_seen == (255, 0, 0) else 0.01
+        return [{"label": label, "score": score} for label, score in scores.items()]
+
+
+class MissingVisualProvider(LocalCLIPTagProvider):
+    def tags_for(self, image_path):
+        raise ProviderUnavailableError("optional model unavailable")
+
+
+class CategoryPixelClassifier:
+    def __init__(self, color_to_label):
+        self.color_to_label = color_to_label
+
+    def __call__(self, image_path, *, candidate_labels, hypothesis_template):
+        with Image.open(image_path) as image:
+            red = image.convert("RGB").getpixel((0, 0))[0]
+        target = self.color_to_label[red]
+        return [
+            {"label": label, "score": 0.95 if label == target else 0.01}
+            for label in candidate_labels
+        ]
 
 
 class CoreTests(unittest.TestCase):
@@ -40,7 +80,45 @@ class CoreTests(unittest.TestCase):
             Image.new("RGB", (1, 1)).save(root / "photo.png")
             self.assertEqual([p.name for p in iter_images(root)], ["photo.png"])
 
+    def test_local_visual_provider_reads_pixels_and_indexes_tags(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            image_path = root / "unlabeled.png"
+            Image.new("RGB", (8, 8), (255, 0, 0)).save(image_path)
+            classifier = PixelAwareClassifier()
+            provider = LocalCLIPTagProvider(classifier=classifier)
+            database = PhotoDatabase(root / "index.sqlite3")
+            self.assertEqual(index_folder(root, database, provider=provider), 1)
+            self.assertEqual(classifier.pixel_seen, (255, 0, 0))
+            results = database.search("planes")
+            self.assertEqual(len(results), 1)
+            self.assertIn("planes", results[0].tags)
+            database.close()
+
+    def test_visual_dependency_failure_falls_back_to_filename_tags(self):
+        provider = GracefulFallbackTagProvider(MissingVisualProvider())
+        tags = provider.tags_for(Path("family/portrait_at_beach.jpg"))
+        self.assertEqual(tags, ["nature", "people"])
+        self.assertFalse(provider.primary_enabled)
+        self.assertIn("unavailable", provider.fallback_reason)
+
+    def test_all_requested_visual_categories_are_searchable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            color_to_label = {}
+            for red, (category, label) in enumerate(VISUAL_CATEGORY_LABELS.items(), start=1):
+                color_to_label[red] = label
+                Image.new("RGB", (4, 4), (red, 0, 0)).save(root / f"image_{red}.png")
+            provider = LocalCLIPTagProvider(classifier=CategoryPixelClassifier(color_to_label))
+            database = PhotoDatabase(root / "index.sqlite3")
+            self.assertEqual(index_folder(root, database, provider=provider), 7)
+            for category in VISUAL_CATEGORY_LABELS:
+                with self.subTest(category=category):
+                    results = database.search(category)
+                    self.assertEqual(len(results), 1)
+                    self.assertIn(category, results[0].tags)
+            database.close()
+
 
 if __name__ == "__main__":
     unittest.main()
-

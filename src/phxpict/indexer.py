@@ -7,7 +7,7 @@ from typing import Callable, Iterator
 from PIL import Image, UnidentifiedImageError
 
 from .database import Photo, PhotoDatabase
-from .providers import ContentTagProvider, FilenameTagProvider
+from .providers import ContentTagProvider, build_tag_provider
 
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic"}
@@ -57,7 +57,7 @@ def index_folder(
 ) -> int:
     if not root.is_dir():
         raise ValueError(f"Not a directory: {root}")
-    tagger = provider or FilenameTagProvider()
+    tagger = provider or build_tag_provider("auto")
     count = 0
     for count, path in enumerate(iter_images(root), start=1):
         database.upsert(inspect_photo(path, tagger))
@@ -67,4 +67,3 @@ def index_folder(
             progress(count, path)
     database.commit()
     return count
-
