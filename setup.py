@@ -18,7 +18,7 @@ setup(
     python_requires=">=3.9",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    install_requires=["Pillow>=9.5"],
+    install_requires=["Pillow>=9.5", "pillow-heif>=0.18"],
     extras_require={
         "visual": ["torch>=2.1", "transformers>=4.38,<5"],
     },
