@@ -28,6 +28,8 @@ VISUAL_CATEGORY_LABELS = {
     "warfare": "warfare, military personnel, weapons, tanks, or combat",
 }
 
+OTHER_VISUAL_LABEL = "an unrelated, ambiguous, abstract, scanned, or miscellaneous image"
+
 
 class ProviderUnavailableError(RuntimeError):
     """Raised when an optional content provider cannot run locally."""
@@ -125,7 +127,7 @@ class LocalCLIPTagProvider(ContentTagProvider):
 
     def tags_for(self, image_path: Path) -> list[str]:
         classifier = self._load_classifier()
-        labels = list(self.category_labels.values())
+        labels = [*self.category_labels.values(), OTHER_VISUAL_LABEL]
         try:
             predictions = classifier(
                 str(image_path),
@@ -139,6 +141,8 @@ class LocalCLIPTagProvider(ContentTagProvider):
             str(item.get("label")): float(item.get("score", 0.0))
             for item in predictions
         }
+        if by_label.get(OTHER_VISUAL_LABEL, 0.0) >= max(by_label.values(), default=0.0):
+            return []
         ranked = sorted(
             ((category, by_label.get(label, 0.0)) for category, label in self.category_labels.items()),
             key=lambda item: item[1],

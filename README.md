@@ -20,6 +20,8 @@ The MVP runs locally on Windows, macOS, and Linux. It does not upload photograph
 - Searchable local visual-content tags through an optional CLIP model
 - Capture/modification date range filters
 - Responsive thumbnail gallery
+- Paginated results so large libraries do not render every thumbnail at once
+- HEIC/HEIF support for common iPhone photo libraries
 - Double-click to open an image in the operating system
 - CLI for automation and headless environments
 - Extensible `ContentTagProvider` interface with graceful lightweight fallback
@@ -81,6 +83,13 @@ See [Architecture](docs/ARCHITECTURE.md) for the local semantic-model provider p
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Tomorrow-ready demo
+
+See [Demo Guide](docs/DEMO.md). For a library containing thousands of photos,
+install and cache the local visual model before the visit, then pre-index the
+library or a representative copy. Local visual inference is private but can be
+slow on CPU; searches are fast after indexing.
 
 ## Repository layout
 

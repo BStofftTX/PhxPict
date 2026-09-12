@@ -62,7 +62,8 @@ class PhotoDatabase:
         date_field: str = "capture_date",
         start: str | None = None,
         end: str | None = None,
-        limit: int = 500,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[Photo]:
         if date_field not in {"capture_date", "modified_date"}:
             raise ValueError("date_field must be capture_date or modified_date")
@@ -80,12 +81,37 @@ class PhotoDatabase:
         sql = "SELECT path, filename, capture_date, modified_date, tags, width, height FROM photos"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        sql += f" ORDER BY COALESCE(capture_date, modified_date) DESC LIMIT {int(limit)}"
+        sql += " ORDER BY COALESCE(capture_date, modified_date) DESC LIMIT ? OFFSET ?"
+        values.extend([max(1, int(limit)), max(0, int(offset))])
         return [Photo(**dict(row)) for row in self.connection.execute(sql, values)]
+
+    def search_count(
+        self,
+        text: str = "",
+        date_field: str = "capture_date",
+        start: str | None = None,
+        end: str | None = None,
+    ) -> int:
+        if date_field not in {"capture_date", "modified_date"}:
+            raise ValueError("date_field must be capture_date or modified_date")
+        clauses, values = [], []
+        for token in text.lower().split():
+            clauses.append("(lower(filename) LIKE ? OR lower(tags) LIKE ? OR lower(path) LIKE ?)")
+            like = f"%{token}%"
+            values.extend([like, like, like])
+        if start:
+            clauses.append(f"{date_field} >= ?")
+            values.append(start)
+        if end:
+            clauses.append(f"{date_field} <= ?")
+            values.append(end + "T23:59:59")
+        sql = "SELECT COUNT(*) FROM photos"
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        return int(self.connection.execute(sql, values).fetchone()[0])
 
     def count(self) -> int:
         return int(self.connection.execute("SELECT COUNT(*) FROM photos").fetchone()[0])
 
     def close(self) -> None:
         self.connection.close()
-

@@ -16,6 +16,7 @@ from .providers import GracefulFallbackTagProvider, build_tag_provider
 
 
 BRAND = "MacroStofft"
+PAGE_SIZE = 100
 
 
 class PhxPictApp(tk.Tk):
@@ -32,6 +33,8 @@ class PhxPictApp(tk.Tk):
         self.date_field = tk.StringVar(value="capture_date")
         self.start = tk.StringVar()
         self.end = tk.StringVar()
+        self.offset = 0
+        self.result_count = 0
         self._build()
         self.search()
 
@@ -47,14 +50,14 @@ class PhxPictApp(tk.Tk):
         ttk.Label(filters, text="Content").grid(row=0, column=0, sticky="w")
         query = ttk.Entry(filters, textvariable=self.query)
         query.grid(row=1, column=0, sticky="ew", padx=(0, 8))
-        query.bind("<Return>", lambda _event: self.search())
+        query.bind("<Return>", lambda _event: self.new_search())
         ttk.Label(filters, text="Date type").grid(row=0, column=1, sticky="w")
         ttk.Combobox(filters, textvariable=self.date_field, values=("capture_date", "modified_date"), state="readonly", width=16).grid(row=1, column=1, padx=4)
         ttk.Label(filters, text="From YYYY-MM-DD").grid(row=0, column=2, sticky="w")
         ttk.Entry(filters, textvariable=self.start, width=14).grid(row=1, column=2, padx=4)
         ttk.Label(filters, text="To YYYY-MM-DD").grid(row=0, column=3, sticky="w")
         ttk.Entry(filters, textvariable=self.end, width=14).grid(row=1, column=3, padx=4)
-        ttk.Button(filters, text="Search", command=self.search).grid(row=1, column=4, padx=(8, 0))
+        ttk.Button(filters, text="Search", command=self.new_search).grid(row=1, column=4, padx=(8, 0))
         filters.columnconfigure(0, weight=1)
 
         self.canvas = tk.Canvas(self, bg="#F0F4F8", highlightthickness=0)
@@ -65,7 +68,13 @@ class PhxPictApp(tk.Tk):
         self.canvas.configure(yscrollcommand=scroll.set)
         self.canvas.pack(side="left", fill="both", expand=True)
         scroll.pack(side="right", fill="y")
-        ttk.Label(self, textvariable=self.status, anchor="w", padding=8).pack(side="bottom", fill="x")
+        footer = ttk.Frame(self, padding=8)
+        footer.pack(side="bottom", fill="x")
+        ttk.Label(footer, textvariable=self.status, anchor="w").pack(side="left", fill="x", expand=True)
+        self.previous_button = ttk.Button(footer, text="Previous", command=self.previous_page)
+        self.previous_button.pack(side="right", padx=(8, 0))
+        self.next_button = ttk.Button(footer, text="Next", command=self.next_page)
+        self.next_button.pack(side="right")
 
     def choose_folder(self) -> None:
         selected = filedialog.askdirectory(title="Choose a photo repository")
@@ -89,15 +98,24 @@ class PhxPictApp(tk.Tk):
             if isinstance(provider, GracefulFallbackTagProvider) and provider.fallback_reason:
                 mode = "filename tags (visual model unavailable)"
             self.after(0, self.status.set, f"Indexed {count} images · {total} total · {mode}")
-            self.after(0, self.search)
+            self.after(0, self.new_search)
         except Exception as exc:
             self.after(0, messagebox.showerror, "Indexing failed", str(exc))
         finally:
             worker_database.close()
 
+    def new_search(self) -> None:
+        self.offset = 0
+        self.search()
+
     def search(self) -> None:
         try:
-            self.photos = self.database.search(self.query.get(), self.date_field.get(), self.start.get() or None, self.end.get() or None)
+            args = (
+                self.query.get(), self.date_field.get(),
+                self.start.get() or None, self.end.get() or None,
+            )
+            self.result_count = self.database.search_count(*args)
+            self.photos = self.database.search(*args, limit=PAGE_SIZE, offset=self.offset)
         except Exception as exc:
             messagebox.showerror("Search error", str(exc))
             return
@@ -106,7 +124,27 @@ class PhxPictApp(tk.Tk):
         self.thumbnail_refs.clear()
         for index, photo in enumerate(self.photos):
             self._photo_card(photo, index // 5, index % 5)
-        self.status.set(f"{len(self.photos)} results · {self.database.count()} indexed photos · Data stays local")
+        first = self.offset + 1 if self.result_count else 0
+        last = min(self.offset + len(self.photos), self.result_count)
+        self.status.set(
+            f"Showing {first}-{last} of {self.result_count} matches · "
+            f"{self.database.count()} indexed photos · Data stays local"
+        )
+        self.previous_button.configure(state="normal" if self.offset else "disabled")
+        self.next_button.configure(
+            state="normal" if self.offset + PAGE_SIZE < self.result_count else "disabled"
+        )
+
+    def previous_page(self) -> None:
+        self.offset = max(0, self.offset - PAGE_SIZE)
+        self.search()
+        self.canvas.yview_moveto(0)
+
+    def next_page(self) -> None:
+        if self.offset + PAGE_SIZE < self.result_count:
+            self.offset += PAGE_SIZE
+            self.search()
+            self.canvas.yview_moveto(0)
 
     def _photo_card(self, photo: Photo, row: int, column: int) -> None:
         card = tk.Frame(self.gallery, bg="white", bd=1, relief="solid", padx=8, pady=8)

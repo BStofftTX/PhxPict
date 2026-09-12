@@ -6,6 +6,15 @@ from typing import Callable, Iterator
 
 from PIL import Image, UnidentifiedImageError
 
+try:
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+except ImportError:
+    # Source-tree test runs may omit optional runtime dependencies. Normal
+    # package installation includes pillow-heif for common iPhone libraries.
+    pass
+
 from .database import Photo, PhotoDatabase
 from .providers import ContentTagProvider, build_tag_provider
 

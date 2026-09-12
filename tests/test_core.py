@@ -13,6 +13,7 @@ from phxpict.providers import (
     LocalCLIPTagProvider,
     ProviderUnavailableError,
     VISUAL_CATEGORY_LABELS,
+    OTHER_VISUAL_LABEL,
 )
 
 
@@ -50,6 +51,14 @@ class CategoryPixelClassifier:
         ]
 
 
+class OtherPixelClassifier:
+    def __call__(self, image_path, *, candidate_labels, hypothesis_template):
+        return [
+            {"label": label, "score": 0.98 if label == OTHER_VISUAL_LABEL else 0.01}
+            for label in candidate_labels
+        ]
+
+
 class CoreTests(unittest.TestCase):
     def test_filename_categories(self):
         provider = FilenameTagProvider()
@@ -80,6 +89,22 @@ class CoreTests(unittest.TestCase):
             Image.new("RGB", (1, 1)).save(root / "photo.png")
             self.assertEqual([p.name for p in iter_images(root)], ["photo.png"])
 
+    def test_search_pagination_and_count(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            database = PhotoDatabase(root / "index.sqlite3")
+            for number in range(5):
+                image_path = root / f"nature_{number}.png"
+                Image.new("RGB", (2, 2), "green").save(image_path)
+            self.assertEqual(index_folder(root, database), 5)
+            self.assertEqual(database.search_count("nature"), 5)
+            first = database.search("nature", limit=2, offset=0)
+            second = database.search("nature", limit=2, offset=2)
+            self.assertEqual(len(first), 2)
+            self.assertEqual(len(second), 2)
+            self.assertNotEqual({p.path for p in first}, {p.path for p in second})
+            database.close()
+
     def test_local_visual_provider_reads_pixels_and_indexes_tags(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -101,6 +126,10 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(tags, ["nature", "people"])
         self.assertFalse(provider.primary_enabled)
         self.assertIn("unavailable", provider.fallback_reason)
+
+    def test_ambiguous_images_can_remain_untagged(self):
+        provider = LocalCLIPTagProvider(classifier=OtherPixelClassifier())
+        self.assertEqual(provider.tags_for(Path("abstract-image.jpg")), [])
 
     def test_all_requested_visual_categories_are_searchable(self):
         with tempfile.TemporaryDirectory() as temp:
