@@ -31,3 +31,7 @@ phxpict-cli = "phxpict.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["transformers", "transformers.*"]
+ignore_missing_imports = true
