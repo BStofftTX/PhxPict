@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from PIL import Image
+
 from phxpict.database import PhotoDatabase
 from phxpict.indexer import index_folder, iter_images
 from phxpict.providers import (
@@ -13,7 +15,6 @@ from phxpict.providers import (
     LocalCLIPTagProvider,
     ProviderUnavailableError,
 )
-from PIL import Image
 
 
 class PixelAwareClassifier:
