@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from .database import PhotoDatabase
 from .indexer import index_folder
-from .providers import GracefulFallbackTagProvider, ProviderUnavailableError, build_tag_provider
+from .providers import (
+    GracefulFallbackTagProvider,
+    ProviderUnavailableError,
+    build_tag_provider,
+)
 
 
 def default_database() -> Path:

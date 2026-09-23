@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from pathlib import Path
 import re
-from typing import Any, Callable, Iterable, Sequence
-
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable, Sequence
+from pathlib import Path
+from typing import Any
 
 DEFAULT_CATEGORIES = {
     "people": {"people", "person", "portrait", "profile", "face", "family", "friend"},

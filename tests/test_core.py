@@ -1,20 +1,19 @@
 import os
-from pathlib import Path
 import tempfile
 import unittest
-
-from PIL import Image
+from pathlib import Path
 
 from phxpict.database import PhotoDatabase
 from phxpict.indexer import index_folder, iter_images
 from phxpict.providers import (
+    OTHER_VISUAL_LABEL,
+    VISUAL_CATEGORY_LABELS,
     FilenameTagProvider,
     GracefulFallbackTagProvider,
     LocalCLIPTagProvider,
     ProviderUnavailableError,
-    VISUAL_CATEGORY_LABELS,
-    OTHER_VISUAL_LABEL,
 )
+from PIL import Image
 
 
 class PixelAwareClassifier:
