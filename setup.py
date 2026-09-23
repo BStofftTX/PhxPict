@@ -4,7 +4,6 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
-
 ROOT = Path(__file__).parent
 
 setup(
@@ -15,12 +14,18 @@ setup(
     long_description_content_type="text/markdown",
     author="MacroStofft",
     license="LicenseRef-Proprietary",
-    python_requires=">=3.9",
+    python_requires=">=3.12",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    install_requires=["Pillow>=9.5", "pillow-heif>=0.18"],
+    install_requires=["Pillow>=12.3", "pillow-heif>=1.7"],
     extras_require={
-        "visual": ["torch>=2.1", "transformers>=4.38,<5"],
+        "visual": ["torch>=2.14,<3", "transformers>=5.17,<6"],
+        "dev": [
+            "PyInstaller>=6.0",
+            "ruff>=0.8",
+            "mypy>=1.10",
+            "pip-audit>=2.7",
+        ],
     },
     entry_points={
         "console_scripts": [

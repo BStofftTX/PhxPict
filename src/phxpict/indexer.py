@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Iterator
 
 from PIL import Image, UnidentifiedImageError
 
 try:
-    from pillow_heif import register_heif_opener
+    from pillow_heif import register_heif_opener  # type: ignore[import-untyped]
 
     register_heif_opener()
 except ImportError:
@@ -17,7 +17,6 @@ except ImportError:
 
 from .database import Photo, PhotoDatabase
 from .providers import ContentTagProvider, build_tag_provider
-
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tif", ".tiff", ".webp", ".heic"}
 
@@ -32,7 +31,8 @@ def _capture_date(image: Image.Image) -> str | None:
     try:
         raw = image.getexif().get(36867) or image.getexif().get(306)
         if raw:
-            return datetime.strptime(str(raw), "%Y:%m:%d %H:%M:%S").isoformat()
+            # EXIF commonly omits a timezone; preserve the camera-local wall time.
+            return datetime.strptime(str(raw), "%Y:%m:%d %H:%M:%S").isoformat()  # noqa: DTZ007
     except (ValueError, TypeError):
         pass
     return None
@@ -51,7 +51,9 @@ def inspect_photo(path: Path, provider: ContentTagProvider) -> Photo:
         path=str(path.resolve()),
         filename=path.name,
         capture_date=capture,
-        modified_date=datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        modified_date=datetime.fromtimestamp(stat.st_mtime, tz=UTC)
+        .astimezone()
+        .isoformat(),
         tags=", ".join(provider.tags_for(path)),
         width=width,
         height=height,

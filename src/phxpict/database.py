@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
 import sqlite3
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -50,7 +50,7 @@ class PhotoDatabase:
                  filename=excluded.filename, capture_date=excluded.capture_date,
                  modified_date=excluded.modified_date, tags=excluded.tags,
                  width=excluded.width, height=excluded.height, indexed_at=excluded.indexed_at""",
-            (*photo.__dict__.values(), datetime.now().isoformat(timespec="seconds")),
+            (*photo.__dict__.values(), datetime.now(UTC).isoformat(timespec="seconds")),
         )
 
     def commit(self) -> None:
@@ -67,7 +67,8 @@ class PhotoDatabase:
     ) -> list[Photo]:
         if date_field not in {"capture_date", "modified_date"}:
             raise ValueError("date_field must be capture_date or modified_date")
-        clauses, values = [], []
+        clauses: list[str] = []
+        values: list[str | int] = []
         for token in text.lower().split():
             clauses.append("(lower(filename) LIKE ? OR lower(tags) LIKE ? OR lower(path) LIKE ?)")
             like = f"%{token}%"
@@ -94,7 +95,8 @@ class PhotoDatabase:
     ) -> int:
         if date_field not in {"capture_date", "modified_date"}:
             raise ValueError("date_field must be capture_date or modified_date")
-        clauses, values = [], []
+        clauses: list[str] = []
+        values: list[str] = []
         for token in text.lower().split():
             clauses.append("(lower(filename) LIKE ? OR lower(tags) LIKE ? OR lower(path) LIKE ?)")
             like = f"%{token}%"

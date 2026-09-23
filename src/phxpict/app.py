@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
 import sys
 import threading
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageTk
@@ -13,7 +13,6 @@ from .cli import default_database
 from .database import Photo, PhotoDatabase
 from .indexer import index_folder
 from .providers import GracefulFallbackTagProvider, build_tag_provider
-
 
 BRAND = "MacroStofft"
 PAGE_SIZE = 100
@@ -87,11 +86,15 @@ class PhxPictApp(tk.Tk):
         worker_database = PhotoDatabase(default_database())
         try:
             provider = build_tag_provider("auto")
+
+            def update_progress(count: int, path: Path) -> None:
+                self.after(0, self.status.set, f"Indexed {count}: {path.name}")
+
             count = index_folder(
                 root,
                 worker_database,
                 provider=provider,
-                progress=lambda n, p: self.after(0, self.status.set, f"Indexed {n}: {p.name}"),
+                progress=update_progress,
             )
             total = worker_database.count()
             mode = "local visual + filename tags"
@@ -99,7 +102,8 @@ class PhxPictApp(tk.Tk):
                 mode = "filename tags (visual model unavailable)"
             self.after(0, self.status.set, f"Indexed {count} images · {total} total · {mode}")
             self.after(0, self.new_search)
-        except Exception as exc:
+        # Keep the GUI responsive and convert worker failures into a user-facing error.
+        except Exception as exc:  # noqa: BLE001
             self.after(0, messagebox.showerror, "Indexing failed", str(exc))
         finally:
             worker_database.close()
@@ -116,7 +120,8 @@ class PhxPictApp(tk.Tk):
             )
             self.result_count = self.database.search_count(*args)
             self.photos = self.database.search(*args, limit=PAGE_SIZE, offset=self.offset)
-        except Exception as exc:
+        # Search can cross SQLite, filesystem, and UI boundaries; report failures cleanly.
+        except Exception as exc:  # noqa: BLE001
             messagebox.showerror("Search error", str(exc))
             return
         for child in self.gallery.winfo_children():
@@ -160,9 +165,12 @@ class PhxPictApp(tk.Tk):
         tk.Label(card, text=photo.filename, bg="white", wraplength=180, font=("Helvetica", 10, "bold")).pack(pady=(6, 2))
         tk.Label(card, text=photo.tags or "untagged", bg="white", fg="#486581", wraplength=180).pack()
         tk.Label(card, text=(photo.capture_date or photo.modified_date)[:10], bg="white", fg="#829AB1").pack()
-        card.bind("<Double-Button-1>", lambda _e: open_path(photo.path))
+        def handle_open(_event: object, path: str = photo.path) -> None:
+            open_path(path)
+
+        card.bind("<Double-Button-1>", handle_open)
         for child in card.winfo_children():
-            child.bind("<Double-Button-1>", lambda _e, p=photo.path: open_path(p))
+            child.bind("<Double-Button-1>", handle_open)
 
 
 def open_path(path: str) -> None:

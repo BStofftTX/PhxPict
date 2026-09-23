@@ -7,17 +7,23 @@ name = "phxpict"
 version = "0.1.0"
 description = "Privacy-first desktop photo indexing and search by MacroStofft"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = "LicenseRef-Proprietary"
 authors = [{name = "MacroStofft"}]
-dependencies = ["Pillow>=9.5", "pillow-heif>=0.18"]
+dependencies = ["Pillow>=12.3", "pillow-heif>=1.7"]
 
 [project.optional-dependencies]
 visual = [
-    "torch>=2.1",
-    "transformers>=4.38,<5",
+    "torch>=2.14,<3",
+    "transformers>=5.17,<6",
 ]
 test = []
+dev = [
+    "PyInstaller>=6.0",
+    "ruff>=0.8",
+    "mypy>=1.10",
+    "pip-audit>=2.7",
+]
 
 [project.scripts]
 phxpict = "phxpict.app:main"
