@@ -1,5 +1,10 @@
 # PhxPict
 
+[![Tests](https://github.com/BStofftTX/PhxPict/actions/workflows/test.yml/badge.svg)](https://github.com/BStofftTX/PhxPict/actions/workflows/test.yml)
+[![CodeQL](https://github.com/BStofftTX/PhxPict/actions/workflows/codeql.yml/badge.svg)](https://github.com/BStofftTX/PhxPict/actions/workflows/codeql.yml)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Privacy: Local-first](https://img.shields.io/badge/privacy-local--first-2E8B57)](#privacy-model)
+
 **A privacy-first, cross-platform photo search application created and owned by MacroStofft.**
 
 PhxPict indexes a photo repository selected by the user and makes images searchable by:
@@ -10,6 +15,35 @@ PhxPict indexes a photo repository selected by the user and makes images searcha
 - categories such as people/profiles, nature, buildings, automobiles, trains, planes, and warfare.
 
 The MVP runs locally on Windows, macOS, and Linux. It does not upload photographs, require an account, or depend on a cloud service.
+
+## Engineering highlights
+
+- Local-first architecture with no image-upload or telemetry path
+- Cross-platform Tkinter desktop interface plus an automation-friendly CLI
+- Persistent SQLite metadata and category index
+- Replaceable content-provider interface with local CLIP inference
+- Graceful filename-based fallback when optional model dependencies are unavailable
+- HEIC/HEIF support for common iPhone libraries
+- Automated tests, Ruff linting, mypy type checking, dependency auditing, and CodeQL
+- CI validation on Linux, macOS, and Windows
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+    A[Local photo folder] --> B[Indexer]
+    B --> C[EXIF + file metadata]
+    B --> D{Content provider}
+    D --> E[Local CLIP model]
+    D --> F[Filename fallback]
+    C --> G[(Local SQLite index)]
+    E --> G
+    F --> G
+    G --> H[Tkinter desktop UI]
+    G --> I[CLI search]
+```
+
+Images remain in their original locations. The catalog is stored locally, and optional visual classification runs in-process. See [Architecture](docs/ARCHITECTURE.md) for design details and known boundaries.
 
 ## Working MVP
 
@@ -28,7 +62,7 @@ The MVP runs locally on Windows, macOS, and Linux. It does not upload photograph
 
 ## Quick start
 
-Python 3.9+ with Tk support is required.
+Python 3.12+ with Tk support is required.
 
 ```bash
 python3 -m venv .venv
@@ -84,7 +118,7 @@ See [Architecture](docs/ARCHITECTURE.md) for the local semantic-model provider p
 python -m unittest discover -s tests -v
 ```
 
-## Tomorrow-ready demo
+## Demo guide
 
 See [Demo Guide](docs/DEMO.md). For a library containing thousands of photos,
 install and cache the local visual model before the visit, then pre-index the
@@ -97,7 +131,12 @@ slow on CPU; searches are fast after indexing.
 src/phxpict/       application, indexer, database, provider interface
 tests/             automated core tests
 docs/              architecture and roadmap
+.github/           CI, CodeQL, dependency updates, and templates
 ```
+
+## Quality and security
+
+Every pull request runs the core test suite, Ruff, mypy, and `pip-audit` on Linux, macOS, and Windows. CodeQL performs additional static analysis. Security concerns should be reported privately using the process in [SECURITY.md](SECURITY.md).
 
 ## Current limitations
 
@@ -116,3 +155,5 @@ docs/              architecture and roadmap
 ## Ownership and licensing
 
 PhxPict is a MacroStofft project. Copyright © 2026 MacroStofft. All rights reserved pending final license selection. See [LICENSE.md](LICENSE.md).
+
+External contribution expectations are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
