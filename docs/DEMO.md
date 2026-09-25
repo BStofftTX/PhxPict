@@ -8,7 +8,7 @@ signed consumer installer.
 
 ## Prepare on a Mac before the visit
 
-1. Clone or download the private `BStofftTX/PhxPict` repository.
+1. Clone or download the `BStofftTX/PhxPict` repository.
 2. From Terminal in the project folder, run:
 
    ```bash

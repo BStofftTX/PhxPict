@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible PhxPict problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include private photos, personal indexes, credentials, or sensitive filesystem paths.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible sequence using synthetic or non-sensitive data.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, PhxPict commit, and installation method.
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Content provider
+      options:
+        - auto
+        - clip
+        - filename
+        - not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy or security impact
+      description: Describe any possible data exposure or unsafe behavior without posting sensitive data.
