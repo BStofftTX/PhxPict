@@ -32,7 +32,7 @@ def _capture_date(image: Image.Image) -> str | None:
         raw = image.getexif().get(36867) or image.getexif().get(306)
         if raw:
             # EXIF commonly omits a timezone; preserve the camera-local wall time.
-            return datetime.strptime(str(raw), "%Y:%m:%d %H:%M:%S").isoformat()  # noqa: DTZ007
+            return datetime.strptime(str(raw), "%Y:%m:%d %H:%M:%S").isoformat()
     except (ValueError, TypeError):
         pass
     return None
