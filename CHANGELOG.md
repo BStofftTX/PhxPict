@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- CLI indexing now validates the photo-library folder before opening SQLite.
+- Core indexing tests use the deterministic filename provider and never load a
+  visual model or contact a model host.
+
 ### Added
 - Formal release-change record for the controlled private-beta program.
 

@@ -1,10 +1,15 @@
 import os
+import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image
 
+from phxpict.cli import main as cli_main
 from phxpict.database import PhotoDatabase
 from phxpict.indexer import index_folder, iter_images
 from phxpict.providers import (
@@ -60,6 +65,32 @@ class OtherPixelClassifier:
 
 
 class CoreTests(unittest.TestCase):
+    def test_cli_rejects_invalid_index_folder_without_creating_database(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            database_path = root / "index.sqlite3"
+            stderr = StringIO()
+            with (
+                patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "phxpict-cli",
+                        "--database",
+                        str(database_path),
+                        "index",
+                        str(root / "missing-library"),
+                    ],
+                ),
+                self.assertRaises(SystemExit) as result,
+                redirect_stderr(stderr),
+            ):
+                cli_main()
+
+            self.assertEqual(result.exception.code, 2)
+            self.assertIn("Not a directory", stderr.getvalue())
+            self.assertFalse(database_path.exists())
+
     def test_filename_categories(self):
         provider = FilenameTagProvider()
         self.assertEqual(provider.tags_for(Path("family/portrait_at_beach.jpg")), ["nature", "people"])
@@ -73,7 +104,10 @@ class CoreTests(unittest.TestCase):
             timestamp = 1_700_000_000
             os.utime(image_path, (timestamp, timestamp))
             database = PhotoDatabase(root / "index.sqlite3")
-            self.assertEqual(index_folder(root, database), 1)
+            self.assertEqual(
+                index_folder(root, database, provider=FilenameTagProvider()),
+                1,
+            )
             results = database.search("automobiles")
             self.assertEqual(len(results), 1)
             self.assertEqual(results[0].width, 64)
@@ -96,7 +130,10 @@ class CoreTests(unittest.TestCase):
             for number in range(5):
                 image_path = root / f"nature_{number}.png"
                 Image.new("RGB", (2, 2), "green").save(image_path)
-            self.assertEqual(index_folder(root, database), 5)
+            self.assertEqual(
+                index_folder(root, database, provider=FilenameTagProvider()),
+                5,
+            )
             self.assertEqual(database.search_count("nature"), 5)
             first = database.search("nature", limit=2, offset=0)
             second = database.search("nature", limit=2, offset=2)
