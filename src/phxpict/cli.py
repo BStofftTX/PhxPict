@@ -40,6 +40,8 @@ def main() -> None:
     search.add_argument("--start")
     search.add_argument("--end")
     args = parser.parse_args()
+    if args.command == "index" and not args.folder.is_dir():
+        parser.error(f"Not a directory: {args.folder}")
     database = PhotoDatabase(args.database)
     try:
         if args.command == "index":
